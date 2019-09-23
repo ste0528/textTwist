@@ -1,0 +1,840 @@
+<!doctype html>
+	<head>
+		<title>Text Twist</title>
+	</head>
+	<body>
+		<canvas id="canvas"></canvas>
+		<script>
+			function rnd(number) {
+				return Math.floor(Math.random()*number);
+			}
+			<!--shuffle letters-->
+			function shuffle(arrayOfLetters) {
+				for(var counter=arrayOfLetters.length-1;counter>0;counter--) {
+					var counter2=rnd(counter+1);
+					var t=arrayOfLetters[counter];
+					arrayOfLetters[counter]=arrayOfLetters[counter2];
+					arrayOfLetters[counter2]=t;
+				}
+			}
+			
+			function distance(x1,y1,x2,y2) {
+				return Math.sqrt(Math.pow(x2-x1,2)+Math.pow(y2-y1,2));
+			}
+			
+			<!-- display message -->
+			function showMessage(newMessage) {
+				message=newMessage;
+				isMessageVisible=true;
+			}
+
+            <!-- Design a canvas layout for anagrams -->
+			function createAnagramsCanvas() {
+				var size=16;
+				var gap=2;
+				var startX=18;
+				var startY=16;
+				var x=startX;
+				var y=startY;
+				var newX=0;
+				anagramsCanvas.height=canvas.height-194;
+				for(var counter=0;counter<anagrams.length;counter++) {
+					var anagram=anagrams[counter];
+					x=startX;
+					for(var counter2=0;counter2<anagram.length;counter2++) {
+						x+=size+gap;
+						if(newX<x) {
+							newX=x;
+						}
+					}				
+					y+=size+gap;
+					if(y>=anagramsCanvas.height) {
+						startX=newX+size/2;
+						y=startY;
+					}
+				}
+				anagramsCanvas.width=x;
+				anagramsCtx.fillStyle="#515151";
+				anagramsCtx.fillRect(0,0,anagramsCanvas.width,anagramsCanvas.height);
+				y=startY;
+				startX=18;
+				newX=0;
+				for(var counter=0;counter<anagrams.length;counter++) {
+					var anagram=anagrams[counter];
+					x=startX;
+					for(var counter2=0;counter2<anagram.length;counter2++) {
+						if(guessed[counter]) {
+							anagramsCtx.fillStyle="#0080FF";
+							anagramsCtx.fillRect(x-size/2,y-size/2,size,size);
+							anagramsCtx.fillStyle="#FFA500";
+							anagramsCtx.font="bold 12px verdana";
+							anagramsCtx.textAlign="center";
+							anagramsCtx.textBaseline="middle";
+							anagramsCtx.fillText(anagram.charAt(counter2).toUpperCase(),x,y);
+						} else if(isDisplayAllAnagrams) {
+							anagramsCtx.fillStyle="#0080FF";
+							anagramsCtx.fillRect(x-size/2,y-size/2,size,size);
+							anagramsCtx.fillStyle="#FFA500";
+							anagramsCtx.font="bold 12px verdana";
+							anagramsCtx.textAlign="center";
+							anagramsCtx.textBaseline="middle";
+							anagramsCtx.fillText(anagram.charAt(counter2).toUpperCase(),x,y);
+						} else {
+							anagramsCtx.fillStyle="#EEEEEE";
+							anagramsCtx.fillRect(x-size/2,y-size/2,size,size);
+						}
+						x+=size+gap;
+						if(newX<x) {
+							newX=x;
+						}
+					}				
+					y+=size+gap;
+					if(y>=anagramsCanvas.height) {
+						startX=newX+size/2;
+						y=startY;
+					}
+				}
+			}
+			
+			<!-- Draw the canvas -->
+			function drawAnagramsCanvas() {
+				ctx.fillStyle="#515151";
+				ctx.fillRect(0,192,canvas.width,canvas.height);
+				ctx.drawImage(anagramsCanvas,anagramsCanvasX,0,canvas.width,anagramsCanvas.height,0,192,canvas.width,anagramsCanvas.height);
+			}
+			
+			<!-- change the clock time -->
+			function countDown() {
+				if(remainingTime>0) remainingTime--;
+			}
+			
+			<!--detect mouse movement and clicks-->
+			function getMousePosition(evt) {
+				var rect=canvas.getBoundingClientRect();
+				return {
+					x:evt.clientX-rect.left,
+					y:evt.clientY-rect.top
+				}
+			}
+            function onMouseMoved(evt) {
+				var mousePosition=getMousePosition(evt);
+				mouse.x=mousePosition.x;
+				mouse.y=mousePosition.y;
+			}
+			function onMouseDown(evt) {
+				var mousePosition=getMousePosition(evt);
+				mouse.x=mousePosition.x;
+				mouse.y=mousePosition.y;
+				mouse.button=evt.button;
+			}
+			function onMouseUp(evt) {
+				var mousePosition=getMousePosition(evt);
+				mouse.x=mousePosition.x;
+				mouse.y=mousePosition.y;
+				mouse.button=-1;
+			}
+			function Mouse() {
+				this.x=0;
+				this.y=0;
+				this.button=-1;
+			}
+
+            <!-- Draw a circle around the letters -->
+			function Circle(x,y,radius) {
+				this.x=x;
+				this.y=y;
+				this.radius=radius;
+				this.containsBallIndex=-1;
+				this.draw=function() {
+					ctx.beginPath();
+					ctx.fillStyle="#515151";
+					ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
+					ctx.fill();
+					ctx.closePath();
+					ctx.beginPath();
+					ctx.strokeStyle="#EEEEEE";
+					ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
+					ctx.stroke();
+					ctx.closePath();					
+				}
+			}
+			
+			<!-- Draw the boxes for the selected letters -->
+			function Box(x,y,width,height) {
+				this.x=x;
+				this.y=y;
+				this.width=width;
+				this.height=height;
+				this.containsBallIndex=-1;
+				this.draw=function() {
+					ctx.fillStyle="#515151";
+					ctx.fillRect(this.x-this.width/2,this.y-this.height/2,this.width,this.height);
+					ctx.beginPath();
+					ctx.strokeStyle="#0000A0";
+					ctx.rect(this.x-this.width/2,this.y-this.height/2,this.width,this.height);
+					ctx.stroke();
+					ctx.closePath();
+				}
+			}
+			
+			
+			function letterOutline(letter,x,y,radius) {
+				this.letter=letter;
+				this.x=x;
+				this.y=y;
+				this.radius=radius;
+				this.dx=0;
+				this.dy=0;
+				this.moving=false;
+				this.speed=10;
+				this.state="up";
+				this.used=false;
+				this.enabled="true";
+				
+				this.draw=function() {
+					if(this.enabled) {
+						ctx.font="16px verdana";
+						switch(this.state) {
+							case "up":
+								ctx.beginPath();
+								ctx.fillStyle="#FFA500";
+								ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
+								ctx.fill();
+								ctx.closePath();
+								ctx.beginPath();
+								ctx.strokeStyle="#0080FF";
+								ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
+								ctx.stroke();
+								ctx.closePath();
+								ctx.fillStyle="#0000A0";
+								ctx.textAlign="center";
+								ctx.textBaseline="middle";
+								ctx.fillText(this.letter.toUpperCase(),this.x,this.y);
+								break;
+							case "over":
+								ctx.beginPath();
+								ctx.fillStyle="#EEEEEE";
+								ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
+								ctx.fill();
+								ctx.closePath();
+								ctx.beginPath();
+								ctx.strokeStyle="#0080FF";
+								ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
+								ctx.stroke();
+								ctx.closePath();
+								ctx.fillStyle="#0080FF";
+								ctx.textAlign="center";
+								ctx.textBaseline="middle";
+								ctx.fillText(this.letter.toUpperCase(),this.x,this.y);
+								break;
+							case "down":
+								ctx.beginPath();
+								ctx.fillStyle="#0080FF";
+								ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
+								ctx.fill();
+								ctx.closePath();
+								ctx.beginPath();
+								ctx.strokeStyle="#EEEEEE";
+								ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
+								ctx.stroke();
+								ctx.closePath();
+								ctx.fillStyle="#EEEEEE";
+								ctx.textAlign="center";
+								ctx.textBaseline="middle";
+								ctx.fillText(this.letter.toUpperCase(),this.x,this.y);
+								break;
+						}
+					} else {
+						ctx.beginPath();
+						ctx.fillStyle="#515151";
+						ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
+						ctx.fill();
+						ctx.closePath();
+						ctx.beginPath();
+						ctx.strokeStyle="#EEEEEE";
+						ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
+						ctx.stroke();
+						ctx.closePath();
+						ctx.fillStyle="#EEEEEE";
+						ctx.textAlign="center";
+						ctx.textBaseline="middle";
+						ctx.fillText(this.letter.toUpperCase(),this.x,this.y);
+					}
+				}
+				
+				this.update=function() {
+					if(this.moving) {
+						var diffx=this.dx-this.x;
+						var diffy=this.dy-this.y;
+						this.x+=diffx/this.speed;
+						this.y+=diffy/this.speed;
+						
+						if(Math.abs(diffx)<1) {
+							this.x=this.dx;
+						}
+						if(Math.abs(diffy)<1) {
+							this.y=this.dy;
+						}
+						if(this.x==this.dx && this.y==this.dy) {
+							this.moving=false;
+						}
+					}
+				}
+				
+				this.handleEvents=function() {
+					if(this.enabled) {
+						if(distance(mouse.x,mouse.y,this.x,this.y)<=this.radius) {
+							if(mouse.button==-1) {
+								if(this.state=="down") {
+									this.state="over";
+									return true;
+								}
+								this.state="over";
+							} else if(mouse.button==0) {
+								this.state="down";
+							}
+						} else {
+							this.state="up";
+							return false;
+						}
+					}
+				}
+			}
+			
+			function Button(text,x,y,width,height) {
+				this.text=text;
+				this.x=x;
+				this.y=y;
+				this.width=width;
+				this.height=height;
+				this.state="up";
+				this.enabled=true;
+				this.draw=function() {
+					ctx.font="16px verdana";
+					if(this.enabled) {
+						switch(this.state) {
+							case "up":
+								ctx.beginPath();
+								ctx.fillStyle="#0080FF";
+								ctx.fillRect(this.x,this.y,this.width,this.height);
+								ctx.fill();
+								ctx.closePath();
+			
+								ctx.beginPath();
+								ctx.strokeStyle="#EEEEEE";
+								ctx.rect(this.x,this.y,this.width,this.height);
+								ctx.stroke();
+								ctx.closePath();
+			
+								ctx.fillStyle="#EEEEEE";
+								ctx.textAlign="center";
+								ctx.textBaseline="middle";
+								ctx.fillText(this.text,this.x+this.width/2,this.y+this.height/2);
+								break;
+								
+							case "over":
+								ctx.beginPath();
+								ctx.fillStyle="#EEEEEE";
+								ctx.fillRect(this.x,this.y,this.width,this.height);
+								ctx.fill();
+								ctx.closePath();
+			
+								ctx.beginPath();
+								ctx.strokeStyle="#0080FF";
+								ctx.rect(this.x,this.y,this.width,this.height);
+								ctx.stroke();
+								ctx.closePath();
+			
+								ctx.fillStyle="#0080FF";
+								ctx.textAlign="center";
+								ctx.textBaseline="middle";
+								ctx.fillText(this.text,this.x+this.width/2,this.y+this.height/2);
+								break;
+	
+							case "down":
+								ctx.beginPath();
+								ctx.fillStyle="#0080FF";
+								ctx.fillRect(this.x,this.y,this.width,this.height);
+								ctx.fill();
+								ctx.closePath();
+			
+								ctx.beginPath();
+								ctx.strokeStyle="#EEEEEE";
+								ctx.rect(this.x,this.y,this.width,this.height);
+								ctx.stroke();
+								ctx.closePath();
+			
+								ctx.fillStyle="#EEEEEE";
+								ctx.textAlign="center";
+								ctx.textBaseline="middle";
+								ctx.fillText(this.text,this.x+this.width/2,this.y+this.height/2);
+								break;
+						}
+						
+					} else {
+					
+						ctx.beginPath();
+						ctx.fillStyle="#515151";
+						ctx.fillRect(this.x,this.y,this.width,this.height);
+						ctx.fill();
+						ctx.closePath();
+	
+						ctx.beginPath();
+						ctx.strokeStyle="#EEEEEE";
+						ctx.rect(this.x,this.y,this.width,this.height);
+						ctx.stroke();
+						ctx.closePath();
+	
+						ctx.fillStyle="#EEEEEE";
+						ctx.textAlign="center";
+						ctx.textBaseline="middle";
+						ctx.fillText(this.text,this.x+this.width/2,this.y+this.height/2);
+						
+					}
+				}
+				
+				this.handleEvents=function() {
+					if(this.enabled) {
+						if(mouse.x>=this.x && mouse.x<=this.x+this.width && mouse.y>=this.y && mouse.y<=this.y+this.height) {
+							if(mouse.button==-1) {
+								if(this.state=="down") {
+									this.state="over";
+									return true;
+								}
+								this.state="over";
+							} else if(mouse.button==0) {
+								this.state="down";
+							}
+						} else {
+							this.state="up";
+							return false;
+						}
+					}
+				}
+				
+			}
+
+			function init() {
+				var ajax=new XMLHttpRequest();
+				ajax.onreadystatechange=function() {
+					if(ajax.readyState==4 && ajax.status==200) {
+						var json=JSON.parse(ajax.responseText);
+						word=json.word;
+						anagrams=json.anagrams;
+						shuffle(anagrams);
+						anagrams.sort(function(arrayOfLetters,b) {
+							return arrayOfLetters.length-b.length;
+						});
+						
+						longWordLength=word.length;
+						guessed=[];
+						for(var counter=0;counter<anagrams.length;counter++) {
+							guessed.push(false);
+						}
+						
+						letterCircles=[];
+						boxes=[];
+						circles=[];
+						for(var counter=0;counter<word.length;counter++) {
+							boxes.push(new Box(counter*(44+4)+32,32,44,44));
+							letterCircles.push(new letterOutline(word.charAt(counter),counter*(44+4)+32,84,20));
+							circles.push(new Circle(counter*(44+4)+32,84,12));
+						}
+						
+						var indexes=[];
+						for(var counter=0;counter<circles.length;counter++) {
+							indexes.push(counter);
+						}
+						shuffle(indexes);
+						for(var counter=0;counter<letterCircles.length;counter++) {
+							letterCircles[counter].x=circles[indexes[counter]].x;
+							letterCircles[counter].y=circles[indexes[counter]].y;
+							circles[indexes[counter]].containsBallIndex=counter;
+						}
+						
+						twistButton=new Button("Twist",10,112,96,32);
+						enterButton=new Button("Enter",114,112,96,32);
+						clearButton=new Button("Clear",218,112,96,32);
+						gameState="start";
+					}
+				}	
+				ajax.open("GET","textTwist.php",true);
+				ajax.send();
+			}
+
+			function draw() {
+				ctx.fillStyle="#515151";
+				ctx.fillRect(0,0,canvas.width,192);
+				switch(gameState) {
+				
+					case "init":
+						ctx.fillStyle="#FFFFFF";
+						ctx.textAlign="center";
+						ctx.textBaseline="middle";
+						ctx.fillText("Loading...",canvas.width/2,canvas.height/2);
+						break;
+					
+					case "start":
+						if(isFirstStart) {
+							createAnagramsCanvas();
+							drawAnagramsCanvas();
+							clockInterval=setInterval(function(){countDown();},1000);
+							isFirstStart=false;
+						}
+
+						if(mouse.x>=0 && mouse.x<=canvas.width && mouse.y>=192 && mouse.y<=canvas.height) {
+						
+							if(isDragStarted) {
+								stopDrag=mouse.x;
+								var dragDiff=stopDrag-startDrag;
+								anagramsCanvasX-=dragDiff;
+								if(anagramsCanvasX<0) anagramsCanvasX=0;
+								if(anagramsCanvas.width<canvas.width) anagramsCanvasX=0;
+								
+								if(anagramsCanvas.width>=canvas.width && anagramsCanvasX>=anagramsCanvas.width-canvas.width) {
+									anagramsCanvasX=anagramsCanvas.width-canvas.width;
+								}
+								
+								drawAnagramsCanvas();
+								isDragStarted=false;
+							}
+							
+							if(mouse.button==0 && !isDragStarted) {
+								isDragStarted=true;
+								startDrag=mouse.x;
+							} 
+							
+							if(mouse.button==-1) {
+								isDragStarted=false;
+							}
+						}
+
+						for(var counter=0;counter<letterCircles.length;counter++) {
+							letterCircles[counter].update();
+						}
+
+						for(var counter=0;counter<boxes.length;counter++) {
+							boxes[counter].draw();
+						}
+						
+						for(var counter=0;counter<circles.length;counter++) {
+							circles[counter].draw();
+						}
+												
+						for(var counter=0;counter<letterCircles.length;counter++) {
+							letterCircles[counter].draw();
+						}
+
+						ctx.font="bold 16px verdana";
+						ctx.fillStyle="#EEEEEE";
+						ctx.textAlign="left";
+						ctx.textBaseline="bottom";
+						var mins=Math.floor(remainingTime/60);
+						var secs=remainingTime%60;
+						ctx.fillText("Time: "+mins+":"+(secs<10?"0"+secs:secs),canvas.width-168,32);
+						ctx.fillText("Score: "+score,canvas.width-174,72);
+						if(previousTime!=remainingTime) {
+							if(remainingTime==0) {
+								setTimeout(function(){
+									twistButton.enabled=false;
+									enterButton.enabled=false;
+									clearButton.enabled=false;
+									
+									for(var counter=0;counter<letterCircles.length;counter++) {
+										letterCircles[counter].enabled=false;
+									}
+								
+									isMessageVisible=false;
+								
+									while(currentBoxIndex) {
+										for(var counter=circles.length-1;counter>=0;counter--) {
+											if(circles[counter].containsBallIndex==-1) {
+												currentBoxIndex--;
+												var counter2=boxes[currentBoxIndex].containsBallIndex;
+												boxes[currentBoxIndex].containsBallIndex=-1;
+												circles[counter].containsBallIndex=counter2;
+												letterCircles[counter2].dx=circles[counter].x;
+												letterCircles[counter2].dy=circles[counter].y;
+												letterCircles[counter2].used=false;
+												letterCircles[counter2].moving=true;
+												break;
+											}
+										}
+									}
+									
+									isDisplayAllAnagrams=true;
+									createAnagramsCanvas();
+									drawAnagramsCanvas();
+									
+									isGameOver=true;
+																	
+								},1000);
+							}							
+						}
+						previousTime=remainingTime;
+						
+
+						if(!isGameOver) {
+							
+							var moving=false;
+							
+							for(var counter=0;counter<letterCircles.length;counter++) {
+								if(letterCircles[counter].moving) {
+									moving=true;
+									break;
+								}
+							}
+	
+							if(currentBoxIndex==0) {
+								enterButton.enabled=false;
+								clearButton.enabled=false;
+							} else {
+								enterButton.enabled=true;
+								clearButton.enabled=true;
+							} 
+							
+							if(currentBoxIndex==longWordLength) {
+								twistButton.enabled=false;
+							} else {
+								twistButton.enabled=true;	
+							}
+	
+							if(isMessageVisible) {
+								var x=10;
+								var y=152;
+								var width=408;
+								var height=32;
+								ctx.fillStyle="#0080FF";
+								ctx.fillRect(x,y,width,height);
+								ctx.beginPath();
+								ctx.strokeStyle="#EEEEEE";
+								ctx.rect(x,y,width,height);
+								ctx.stroke();
+								ctx.closePath();
+								ctx.fillStyle="#EEEEEE";
+								ctx.textAlign="center";
+								ctx.textBaseline="middle";
+								ctx.font="12px verdana";
+								ctx.fillText(message,x+width/2,y+height/2);
+							}
+						}
+																									
+						twistButton.draw();
+						enterButton.draw();
+						clearButton.draw();
+						
+						if(!isGameOver) {
+							if(twistButtonClicked) {
+								isMessageVisible=false;
+								var indexes=[];
+								for(var counter=0;counter<circles.length;counter++) {
+									indexes.push(counter);
+									circles[counter].containsBallIndex=-1;
+								}
+								shuffle(indexes);
+								for(var counter=0;counter<letterCircles.length;counter++) {
+									if(!letterCircles[counter].used) {
+										letterCircles[counter].dx=circles[indexes[counter]].x;
+										letterCircles[counter].dy=circles[indexes[counter]].y;
+										circles[indexes[counter]].containsBallIndex=counter;
+									}
+								}
+								for(var counter=0;counter<letterCircles.length;counter++) {
+									if(!letterCircles[counter].used) {
+										letterCircles[counter].moving=true;							
+									}
+								}
+								
+							} else if(enterButtonClicked) {
+								isMessageVisible=false;
+								guess="";
+								for(var counter=0;counter<currentBoxIndex;counter++) {
+									var counter2=boxes[counter].containsBallIndex;
+									guess+=letterCircles[counter2].letter;
+								}
+	
+								lastWordBallIndexes=[];
+								for(var counter=0;counter<currentBoxIndex;counter++) {
+									var counter2=boxes[counter].containsBallIndex;
+									lastWordBallIndexes.push(counter2);
+								}
+								
+								var anagramIndex=anagrams.indexOf(guess);
+								if(anagramIndex!=-1) {
+									if(!guessed[anagramIndex]) {
+	
+										guessed[anagramIndex]=true;
+										numberOfGuessedWords++;
+										score+=Math.pow(2,guess.length);
+										createAnagramsCanvas();
+										drawAnagramsCanvas();
+										
+										if(numberOfGuessedWords==anagrams.length) {
+											showMessage("Congratulations! You got all the words."); 
+										} else if(guess.length==longWordLength) {
+											showMessage("You got the "+longWordLength+" letter word!");
+										} 
+									} else {
+										showMessage("You've already guessed that word!");
+									}
+								} else {
+									showMessage("Sorry, that's not one of the listed words.");
+								}
+								
+								while(currentBoxIndex) {
+									for(var counter=circles.length-1;counter>=0;counter--) {
+										if(circles[counter].containsBallIndex==-1) {
+											currentBoxIndex--;
+											var counter2=boxes[currentBoxIndex].containsBallIndex;
+											boxes[currentBoxIndex].containsBallIndex=-1;
+											circles[counter].containsBallIndex=counter2;
+											letterCircles[counter2].dx=circles[counter].x;
+											letterCircles[counter2].dy=circles[counter].y;
+											letterCircles[counter2].used=false;
+											letterCircles[counter2].moving=true;
+											break;
+										}
+									}
+								}
+								
+							} else if(clearButtonClicked) {
+								isMessageVisible=false;
+								while(currentBoxIndex) {
+									for(var counter=circles.length-1;counter>=0;counter--) {
+										if(circles[counter].containsBallIndex==-1) {
+											currentBoxIndex--;
+											var counter2=boxes[currentBoxIndex].containsBallIndex;
+											boxes[currentBoxIndex].containsBallIndex=-1;
+											circles[counter].containsBallIndex=counter2;
+											letterCircles[counter2].dx=circles[counter].x;
+											letterCircles[counter2].dy=circles[counter].y;
+											letterCircles[counter2].used=false;
+											letterCircles[counter2].moving=true;
+											break;
+										}
+									}
+								}
+							}
+	
+							for(var counter=0;counter<letterCircles.length;counter++) {
+								if(letterCircles[counter].handleEvents()) {
+									if(!letterCircles[counter].used) {
+										for(var counter2=0;counter2<circles.length;counter2++) {
+											if(circles[counter2].containsBallIndex==counter) {
+												circles[counter2].containsBallIndex=-1;
+												break;
+											}
+										}
+										letterCircles[counter].used=true;
+										letterCircles[counter].dx=boxes[currentBoxIndex].x;
+										letterCircles[counter].dy=boxes[currentBoxIndex].y;
+										boxes[currentBoxIndex].containsBallIndex=counter;
+										currentBoxIndex++;
+										letterCircles[counter].moving=true;
+										break;
+									} else {
+										if(counter==boxes[currentBoxIndex-1].containsBallIndex) {
+											for(var counter2=circles.length-1;counter2>=0;counter2--) {
+												if(circles[counter2].containsBallIndex==-1) {
+													currentBoxIndex--;
+													boxes[currentBoxIndex].containsBallIndex=-1;
+													circles[counter2].containsBallIndex=counter;
+													letterCircles[counter].dx=circles[counter2].x;
+													letterCircles[counter].dy=circles[counter2].y;
+													letterCircles[counter].used=false;
+													letterCircles[counter].moving=true;
+													break;
+												}
+											}
+										}
+									}
+								}
+							}
+							twistButtonClicked=twistButton.handleEvents();
+							enterButtonClicked=enterButton.handleEvents();
+							clearButtonClicked=clearButton.handleEvents();
+						}
+					break;
+				}
+			}
+
+			var canvas;
+			var ctx;		
+			var fps;
+			var gameState;
+			var word;
+			var anagrams;
+			var letterCircles;
+			var boxes;
+			var circles;
+			var twistButton;
+			var enterButton;
+			var clearButton;
+			var twistButtonClicked;
+			var enterButtonClicked;
+			var clearButtonClicked;
+			var message;
+			var isMessageVisible;
+			var messageTimeout;
+			var mouse;
+			var currentBoxIndex;
+			var lastWordBallIndexes;
+			var guessed;
+			var longWordLength;
+			var isFirstStart;
+			var anagramsCanvas;
+			var anagramsCtx;
+			var numberOfGuessedWords;
+			var animationInterval;
+			var clockInterval;
+			var remainingTime;
+			var previousTime;
+			var isGameOver;
+			var isQualifyForNextRound
+			var anagramsCanvasX;
+			var startDrag;
+			var stopDrag;
+			var isDragStarted;
+			var isDisplayAllAnagrams;
+			var score;
+
+			fps=60;
+			gameState="init";
+			canvas=document.getElementById("canvas");
+			canvas.width=720;
+			canvas.height=540;
+			ctx=canvas.getContext("2d");
+			ctx.font="16px verdana";
+			mouse=new Mouse();
+			shuffleButtonClicked=false;
+			currentBoxIndex=0;
+			message="";
+			isMessageVisible=false;
+			messageTimeout=false;
+			lastWordBallIndexes=[];
+			isFirstStart=true;
+			numberOfGuessedWords=0;
+			remainingTime=300;
+			previousTime=-1;
+			isGameOver=false;
+			isQualifyForNextRound=false;
+			anagramsCanvasX=0;
+			startDrag=0;
+			stopDrag=0;
+			isDragStarted=false;
+			isDisplayAllAnagrams=false;
+			score=0;
+
+			document.body.style.backgroundColor="#000000";
+			ctx.fillStyle="#515151";
+			ctx.fillRect(0,0,canvas.width,canvas.height);
+			anagramsCanvas=document.createElement("canvas");
+			anagramsCtx=anagramsCanvas.getContext("2d");
+			animationInterval=setInterval(function(){draw();},1000/fps);
+			canvas.addEventListener("mousemove",onMouseMoved);
+			canvas.addEventListener("mousedown",onMouseDown);
+			canvas.addEventListener("mouseup",onMouseUp);
+			init();
+		</script>
+	</body>
+</html>
