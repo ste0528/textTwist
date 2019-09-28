@@ -44,7 +44,7 @@
 		return $aLetter;
 	}
 
-	$dictionary=file('dictionary.txt',FILE_IGNORE_NEW_LINES);
+	$dictionary=file('wList.txt',FILE_IGNORE_NEW_LINES);
 	$dictionary=filterWords($dictionary,2,7);
 	$chosen=filterWords($dictionary,7,7);
 	$word=$chosen[array_rand($chosen)];
