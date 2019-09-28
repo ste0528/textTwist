@@ -1,20 +1,25 @@
 <!doctype html>
+<html lang="en">
 	<head>
-		<title>Text Twist</title>
+		<meta charset="utf-8">
+		<title>TextTwist</title>
+		<style>
+		</style>
 	</head>
 	<body>
 		<canvas id="canvas"></canvas>
 		<script>
+
 			function rnd(number) {
 				return Math.floor(Math.random()*number);
 			}
-			<!--shuffle letters-->
-			function shuffle(arrayOfLetters) {
-				for(var counter=arrayOfLetters.length-1;counter>0;counter--) {
+			
+			function shuffle(a) {
+				for(var counter=a.length-1;counter>0;counter--) {
 					var counter2=rnd(counter+1);
-					var t=arrayOfLetters[counter];
-					arrayOfLetters[counter]=arrayOfLetters[counter2];
-					arrayOfLetters[counter2]=t;
+					var t=a[counter];
+					a[counter]=a[counter2];
+					a[counter2]=t;
 				}
 			}
 			
@@ -22,13 +27,11 @@
 				return Math.sqrt(Math.pow(x2-x1,2)+Math.pow(y2-y1,2));
 			}
 			
-			<!-- display message -->
 			function showMessage(newMessage) {
 				message=newMessage;
 				isMessageVisible=true;
 			}
 
-            <!-- Design a canvas layout for anagrams -->
 			function createAnagramsCanvas() {
 				var size=16;
 				var gap=2;
@@ -38,6 +41,7 @@
 				var y=startY;
 				var newX=0;
 				anagramsCanvas.height=canvas.height-194;
+
 				for(var counter=0;counter<anagrams.length;counter++) {
 					var anagram=anagrams[counter];
 					x=startX;
@@ -53,12 +57,15 @@
 						y=startY;
 					}
 				}
+
 				anagramsCanvas.width=x;
 				anagramsCtx.fillStyle="#515151";
 				anagramsCtx.fillRect(0,0,anagramsCanvas.width,anagramsCanvas.height);
+				
 				y=startY;
 				startX=18;
 				newX=0;
+				
 				for(var counter=0;counter<anagrams.length;counter++) {
 					var anagram=anagrams[counter];
 					x=startX;
@@ -80,7 +87,7 @@
 							anagramsCtx.textBaseline="middle";
 							anagramsCtx.fillText(anagram.charAt(counter2).toUpperCase(),x,y);
 						} else {
-							anagramsCtx.fillStyle="#EEEEEE";
+							anagramsCtx.fillStyle="#FFA500";
 							anagramsCtx.fillRect(x-size/2,y-size/2,size,size);
 						}
 						x+=size+gap;
@@ -96,19 +103,16 @@
 				}
 			}
 			
-			<!-- Draw the canvas -->
 			function drawAnagramsCanvas() {
 				ctx.fillStyle="#515151";
 				ctx.fillRect(0,192,canvas.width,canvas.height);
 				ctx.drawImage(anagramsCanvas,anagramsCanvasX,0,canvas.width,anagramsCanvas.height,0,192,canvas.width,anagramsCanvas.height);
 			}
 			
-			<!-- change the clock time -->
 			function countDown() {
 				if(remainingTime>0) remainingTime--;
 			}
 			
-			<!--detect mouse movement and clicks-->
 			function getMousePosition(evt) {
 				var rect=canvas.getBoundingClientRect();
 				return {
@@ -116,69 +120,77 @@
 					y:evt.clientY-rect.top
 				}
 			}
-            function onMouseMoved(evt) {
+
+			function mouseMove(evt) {
 				var mousePosition=getMousePosition(evt);
 				mouse.x=mousePosition.x;
 				mouse.y=mousePosition.y;
 			}
-			function onMouseDown(evt) {
+
+			function mouseDown(evt) {
 				var mousePosition=getMousePosition(evt);
 				mouse.x=mousePosition.x;
 				mouse.y=mousePosition.y;
 				mouse.button=evt.button;
 			}
-			function onMouseUp(evt) {
+
+			function mouseUp(evt) {
 				var mousePosition=getMousePosition(evt);
 				mouse.x=mousePosition.x;
 				mouse.y=mousePosition.y;
 				mouse.button=-1;
 			}
-			function Mouse() {
+
+			function mouse() {
 				this.x=0;
 				this.y=0;
 				this.button=-1;
 			}
 
-            <!-- Draw a circle around the letters -->
+			
 			function Circle(x,y,radius) {
 				this.x=x;
 				this.y=y;
 				this.radius=radius;
 				this.containsBallIndex=-1;
+				
 				this.draw=function() {
 					ctx.beginPath();
-					ctx.fillStyle="#515151";
+					ctx.fillStyle="#FFA500";
 					ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
 					ctx.fill();
 					ctx.closePath();
 					ctx.beginPath();
-					ctx.strokeStyle="#EEEEEE";
+					ctx.strokeStyle="#FFA500";
 					ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
 					ctx.stroke();
 					ctx.closePath();					
 				}
 			}
 			
-			<!-- Draw the boxes for the selected letters -->
 			function Box(x,y,width,height) {
 				this.x=x;
 				this.y=y;
 				this.width=width;
 				this.height=height;
 				this.containsBallIndex=-1;
+				
 				this.draw=function() {
-					ctx.fillStyle="#515151";
+					
+					ctx.fillStyle="#FFA500";
 					ctx.fillRect(this.x-this.width/2,this.y-this.height/2,this.width,this.height);
+					
 					ctx.beginPath();
-					ctx.strokeStyle="#0000A0";
+					ctx.strokeStyle="#0080FF";
 					ctx.rect(this.x-this.width/2,this.y-this.height/2,this.width,this.height);
 					ctx.stroke();
 					ctx.closePath();
+					
 				}
+				
 			}
 			
-			
-			function letterOutline(letter,x,y,radius) {
+			function Ball(letter,x,y,radius) {
 				this.letter=letter;
 				this.x=x;
 				this.y=y;
@@ -206,14 +218,14 @@
 								ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
 								ctx.stroke();
 								ctx.closePath();
-								ctx.fillStyle="#0000A0";
+								ctx.fillStyle="#0080FF";
 								ctx.textAlign="center";
 								ctx.textBaseline="middle";
 								ctx.fillText(this.letter.toUpperCase(),this.x,this.y);
 								break;
 							case "over":
 								ctx.beginPath();
-								ctx.fillStyle="#EEEEEE";
+								ctx.fillStyle="#FFA500";
 								ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
 								ctx.fill();
 								ctx.closePath();
@@ -229,16 +241,16 @@
 								break;
 							case "down":
 								ctx.beginPath();
-								ctx.fillStyle="#0080FF";
+								ctx.fillStyle="#FFA500";
 								ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
 								ctx.fill();
 								ctx.closePath();
 								ctx.beginPath();
-								ctx.strokeStyle="#EEEEEE";
+								ctx.strokeStyle="#0080FF";
 								ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
 								ctx.stroke();
 								ctx.closePath();
-								ctx.fillStyle="#EEEEEE";
+								ctx.fillStyle="#0080FF";
 								ctx.textAlign="center";
 								ctx.textBaseline="middle";
 								ctx.fillText(this.letter.toUpperCase(),this.x,this.y);
@@ -251,11 +263,11 @@
 						ctx.fill();
 						ctx.closePath();
 						ctx.beginPath();
-						ctx.strokeStyle="#EEEEEE";
+						ctx.strokeStyle="#0080FF";
 						ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
 						ctx.stroke();
 						ctx.closePath();
-						ctx.fillStyle="#EEEEEE";
+						ctx.fillStyle="#0080FF";
 						ctx.textAlign="center";
 						ctx.textBaseline="middle";
 						ctx.fillText(this.letter.toUpperCase(),this.x,this.y);
@@ -309,6 +321,7 @@
 				this.height=height;
 				this.state="up";
 				this.enabled=true;
+				
 				this.draw=function() {
 					ctx.font="16px verdana";
 					if(this.enabled) {
@@ -319,14 +332,12 @@
 								ctx.fillRect(this.x,this.y,this.width,this.height);
 								ctx.fill();
 								ctx.closePath();
-			
 								ctx.beginPath();
-								ctx.strokeStyle="#EEEEEE";
+								ctx.strokeStyle="#FFA500";
 								ctx.rect(this.x,this.y,this.width,this.height);
 								ctx.stroke();
 								ctx.closePath();
-			
-								ctx.fillStyle="#EEEEEE";
+								ctx.fillStyle="#FFA500";
 								ctx.textAlign="center";
 								ctx.textBaseline="middle";
 								ctx.fillText(this.text,this.x+this.width/2,this.y+this.height/2);
@@ -334,37 +345,33 @@
 								
 							case "over":
 								ctx.beginPath();
-								ctx.fillStyle="#EEEEEE";
+								ctx.fillStyle="#0080FF";
 								ctx.fillRect(this.x,this.y,this.width,this.height);
 								ctx.fill();
 								ctx.closePath();
-			
 								ctx.beginPath();
-								ctx.strokeStyle="#0080FF";
+								ctx.strokeStyle="#FFA500";
 								ctx.rect(this.x,this.y,this.width,this.height);
 								ctx.stroke();
 								ctx.closePath();
 			
-								ctx.fillStyle="#0080FF";
+								ctx.fillStyle="#FFA500";
 								ctx.textAlign="center";
 								ctx.textBaseline="middle";
 								ctx.fillText(this.text,this.x+this.width/2,this.y+this.height/2);
 								break;
-	
 							case "down":
 								ctx.beginPath();
 								ctx.fillStyle="#0080FF";
 								ctx.fillRect(this.x,this.y,this.width,this.height);
 								ctx.fill();
 								ctx.closePath();
-			
 								ctx.beginPath();
-								ctx.strokeStyle="#EEEEEE";
+								ctx.strokeStyle="#FFA500";
 								ctx.rect(this.x,this.y,this.width,this.height);
 								ctx.stroke();
 								ctx.closePath();
-			
-								ctx.fillStyle="#EEEEEE";
+								ctx.fillStyle="#FFA500";
 								ctx.textAlign="center";
 								ctx.textBaseline="middle";
 								ctx.fillText(this.text,this.x+this.width/2,this.y+this.height/2);
@@ -378,14 +385,12 @@
 						ctx.fillRect(this.x,this.y,this.width,this.height);
 						ctx.fill();
 						ctx.closePath();
-	
 						ctx.beginPath();
-						ctx.strokeStyle="#EEEEEE";
+						ctx.strokeStyle="#0080FF";
 						ctx.rect(this.x,this.y,this.width,this.height);
 						ctx.stroke();
 						ctx.closePath();
-	
-						ctx.fillStyle="#EEEEEE";
+						ctx.fillStyle="#0080FF";
 						ctx.textAlign="center";
 						ctx.textBaseline="middle";
 						ctx.fillText(this.text,this.x+this.width/2,this.y+this.height/2);
@@ -421,9 +426,11 @@
 						var json=JSON.parse(ajax.responseText);
 						word=json.word;
 						anagrams=json.anagrams;
+						
 						shuffle(anagrams);
-						anagrams.sort(function(arrayOfLetters,b) {
-							return arrayOfLetters.length-b.length;
+						
+						anagrams.sort(function(a,b) {
+							return a.length-b.length;
 						});
 						
 						longWordLength=word.length;
@@ -435,9 +442,10 @@
 						letterCircles=[];
 						boxes=[];
 						circles=[];
+					
 						for(var counter=0;counter<word.length;counter++) {
 							boxes.push(new Box(counter*(44+4)+32,32,44,44));
-							letterCircles.push(new letterOutline(word.charAt(counter),counter*(44+4)+32,84,20));
+							letterCircles.push(new Ball(word.charAt(counter),counter*(44+4)+32,84,20));
 							circles.push(new Circle(counter*(44+4)+32,84,12));
 						}
 						
@@ -455,6 +463,7 @@
 						twistButton=new Button("Twist",10,112,96,32);
 						enterButton=new Button("Enter",114,112,96,32);
 						clearButton=new Button("Clear",218,112,96,32);
+						
 						gameState="start";
 					}
 				}	
@@ -465,16 +474,18 @@
 			function draw() {
 				ctx.fillStyle="#515151";
 				ctx.fillRect(0,0,canvas.width,192);
-				switch(gameState) {
 				
+				switch(gameState) {
 					case "init":
 						ctx.fillStyle="#FFFFFF";
 						ctx.textAlign="center";
 						ctx.textBaseline="middle";
 						ctx.fillText("Loading...",canvas.width/2,canvas.height/2);
+						
 						break;
 					
 					case "start":
+
 						if(isFirstStart) {
 							createAnagramsCanvas();
 							drawAnagramsCanvas();
@@ -512,15 +523,12 @@
 						for(var counter=0;counter<letterCircles.length;counter++) {
 							letterCircles[counter].update();
 						}
-
-						for(var counter=0;counter<boxes.length;counter++) {
+                        for(var counter=0;counter<boxes.length;counter++) {
 							boxes[counter].draw();
 						}
-						
 						for(var counter=0;counter<circles.length;counter++) {
 							circles[counter].draw();
 						}
-												
 						for(var counter=0;counter<letterCircles.length;counter++) {
 							letterCircles[counter].draw();
 						}
@@ -532,7 +540,6 @@
 						var mins=Math.floor(remainingTime/60);
 						var secs=remainingTime%60;
 						ctx.fillText("Time: "+mins+":"+(secs<10?"0"+secs:secs),canvas.width-168,32);
-						ctx.fillText("Score: "+score,canvas.width-174,72);
 						if(previousTime!=remainingTime) {
 							if(remainingTime==0) {
 								setTimeout(function(){
@@ -543,9 +550,7 @@
 									for(var counter=0;counter<letterCircles.length;counter++) {
 										letterCircles[counter].enabled=false;
 									}
-								
 									isMessageVisible=false;
-								
 									while(currentBoxIndex) {
 										for(var counter=circles.length-1;counter>=0;counter--) {
 											if(circles[counter].containsBallIndex==-1) {
@@ -561,13 +566,10 @@
 											}
 										}
 									}
-									
 									isDisplayAllAnagrams=true;
 									createAnagramsCanvas();
 									drawAnagramsCanvas();
-									
 									isGameOver=true;
-																	
 								},1000);
 							}							
 						}
@@ -575,9 +577,7 @@
 						
 
 						if(!isGameOver) {
-							
 							var moving=false;
-							
 							for(var counter=0;counter<letterCircles.length;counter++) {
 								if(letterCircles[counter].moving) {
 									moving=true;
@@ -618,7 +618,6 @@
 								ctx.fillText(message,x+width/2,y+height/2);
 							}
 						}
-																									
 						twistButton.draw();
 						enterButton.draw();
 						clearButton.draw();
@@ -645,6 +644,7 @@
 									}
 								}
 								
+								
 							} else if(enterButtonClicked) {
 								isMessageVisible=false;
 								guess="";
@@ -658,27 +658,24 @@
 									var counter2=boxes[counter].containsBallIndex;
 									lastWordBallIndexes.push(counter2);
 								}
-								
 								var anagramIndex=anagrams.indexOf(guess);
 								if(anagramIndex!=-1) {
 									if(!guessed[anagramIndex]) {
-	
 										guessed[anagramIndex]=true;
 										numberOfGuessedWords++;
-										score+=Math.pow(2,guess.length);
 										createAnagramsCanvas();
 										drawAnagramsCanvas();
 										
 										if(numberOfGuessedWords==anagrams.length) {
 											showMessage("Congratulations! You got all the words."); 
 										} else if(guess.length==longWordLength) {
-											showMessage("You got the "+longWordLength+" letter word!");
+											showMessage("You got the "+longWordLength+" letter word! You qualify for the next round.");
 										} 
 									} else {
-										showMessage("You've already guessed that word!");
+										showMessage("Invalid input: already guessed");
 									}
 								} else {
-									showMessage("Sorry, that's not one of the listed words.");
+									showMessage("Invalid input: word not in dictionary");
 								}
 								
 								while(currentBoxIndex) {
@@ -757,7 +754,7 @@
 					break;
 				}
 			}
-
+			
 			var canvas;
 			var ctx;		
 			var fps;
@@ -787,6 +784,7 @@
 			var numberOfGuessedWords;
 			var animationInterval;
 			var clockInterval;
+			var allottedTime;
 			var remainingTime;
 			var previousTime;
 			var isGameOver;
@@ -796,8 +794,7 @@
 			var stopDrag;
 			var isDragStarted;
 			var isDisplayAllAnagrams;
-			var score;
-
+		
 			fps=60;
 			gameState="init";
 			canvas=document.getElementById("canvas");
@@ -805,7 +802,7 @@
 			canvas.height=540;
 			ctx=canvas.getContext("2d");
 			ctx.font="16px verdana";
-			mouse=new Mouse();
+			mouse=new mouse();
 			shuffleButtonClicked=false;
 			currentBoxIndex=0;
 			message="";
@@ -814,7 +811,8 @@
 			lastWordBallIndexes=[];
 			isFirstStart=true;
 			numberOfGuessedWords=0;
-			remainingTime=300;
+			allottedTime=300;
+			remainingTime=allottedTime;
 			previousTime=-1;
 			isGameOver=false;
 			isQualifyForNextRound=false;
@@ -823,17 +821,16 @@
 			stopDrag=0;
 			isDragStarted=false;
 			isDisplayAllAnagrams=false;
-			score=0;
-
+	
 			document.body.style.backgroundColor="#000000";
 			ctx.fillStyle="#515151";
 			ctx.fillRect(0,0,canvas.width,canvas.height);
 			anagramsCanvas=document.createElement("canvas");
 			anagramsCtx=anagramsCanvas.getContext("2d");
 			animationInterval=setInterval(function(){draw();},1000/fps);
-			canvas.addEventListener("mousemove",onMouseMoved);
-			canvas.addEventListener("mousedown",onMouseDown);
-			canvas.addEventListener("mouseup",onMouseUp);
+			canvas.addEventListener("mousemove",mouseMove);
+			canvas.addEventListener("mousedown",mouseDown);
+			canvas.addEventListener("mouseup",mouseUp);
 			init();
 		</script>
 	</body>
